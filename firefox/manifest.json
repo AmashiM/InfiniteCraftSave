@@ -1,0 +1,1 @@
+{"description":"extension to allow the saving of infinite craft data","manifest_version":2,"name":"InfiniteCraftSave","version":"1.0","icons":{},"content_scripts":[{"matches":["*://neal.fun/infinite-craft/"],"js":["main.js"]}]}
