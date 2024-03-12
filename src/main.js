@@ -1,4 +1,7 @@
 
+const IS_MOZILLA = navigator.userAgent.includes("Mozilla");
+console.log("IS_MOZILLA", IS_MOZILLA)
+
 class Recipe {
     constructor(data){
         this.text = data.text;
@@ -19,6 +22,10 @@ class Recipe {
     }
 }
 
+function special_array(array){
+    return [...new Set(array)];
+}
+
 class Save {
     static data = []
 };
@@ -26,7 +33,7 @@ class Save {
 class SaveFile {
     static encode(data){
         let out = data.map(element => [element.text, element.emoji, element.discovered]);
-        return JSON.stringify(out)
+        return JSON.stringify(special_array(out));
     }
 
     static decode(text){
@@ -36,43 +43,85 @@ class SaveFile {
 }
 
 async function getNewFileHandle() {
-    const options = {
-      types: [
-        {
-          description: 'infinite craft saves please',
-          accept: {
-            'text/plain': ['.infcraft'],
-          },
-        },
-      ],
-    };
-    const handle = await window.showSaveFilePicker(options);
-    return handle;
-  }
+    if(!IS_MOZILLA) {
+        const options = {
+        types: [
+            {
+            description: 'infinite craft saves please',
+            accept: {
+                'text/plain': ['.infcraft'],
+            },
+            },
+        ],
+        };
+        const handle = await window.showSaveFilePicker(options);
+        return handle;
+    } else {
+        return "save.infcraft";
+    }
+}
 
 async function writeFile(fileHandle, contents) {
-    // Create a FileSystemWritableFileStream to write to.
-    const writable = await fileHandle.createWritable();
-    // Write the contents of the file to the stream.
-    await writable.write(SaveFile.encode(contents));
-    // Close the file and write the contents to disk.
-    await writable.close();
+    if (!IS_MOZILLA){
+        // Create a FileSystemWritableFileStream to write to.
+        const writable = await fileHandle.createWritable();
+        // Write the contents of the file to the stream.
+        await writable.write(SaveFile.encode(contents));
+        // Close the file and write the contents to disk.
+        await writable.close();
+    } else {
+        let a = document.createElement('a');
+        document.body.appendChild(a);
+        a.download = fileHandle;
+        a.href = URL.createObjectURL(new Blob([SaveFile.encode(contents)], { type: "text/plain" }));
+        a.click();
+    }
   }
 
 async function save_button_pressed(){
     let fileHandle = await getNewFileHandle();
     pull();
+    console.log("checking", Save.data);
     await writeFile(fileHandle, Save.data);
 }
 
 async function load_button_pressed(){
-    let [fileHandle] = await window.showSaveFilePicker({
-        suggestedName: 'save.infcraft',
-        ...options
-    })
-    const file = await fileHandle.getFile();
-    const contents = await file.text();
-    let elements = SaveFile.decode(contents);
+    let elements;
+    if(!IS_MOZILLA){
+        let [fileHandle] = await window.showSaveFilePicker({
+            suggestedName: 'save.infcraft',
+            ...options
+        })
+        const file = await fileHandle.getFile();
+        const contents = await file.text();
+        elements = SaveFile.decode(contents);
+    } else {
+        let a = document.createElement("input");
+        a.setAttribute("type", "file");
+        a.setAttribute("accept", ".infcraft");
+        await new Promise((res, rej) => {
+            a.addEventListener("change", async () => {
+                if (a.files.length == 1) {
+                    console.log("File selected: ", a.files[0]);
+                    /**
+                     * @type {File}
+                     */
+                    let file = a.files[0];
+                    let content = await file.text();
+                    elements = SaveFile.decode(content);
+                    res();
+                }
+            });
+            a.addEventListener("cancel", () => {
+                console.log("Cancelled.");
+                res();
+            });
+            a.click();
+        })
+    }
+    if (elements == null){
+        return;
+    }
     Save.data = [...new Set([...elements, ...Save.data])];
     push();
     location.reload()
@@ -123,7 +172,7 @@ function pull(){
             Save.data = [...new Set(Save.data)];
             return;
         }
-        Save.data = [...new Set(Save.data)];
+        Save.data = special_array([...Save.data, ...data.elements]);
     }
 }
 
@@ -136,10 +185,10 @@ function push(){
     } else {
         data = JSON.parse(rawdata);
         if(data !== null){
-            elements = new Set([...Save.data, ...data["elements"]]);
+            elements = [...Save.data, ...data["elements"]];
         }
     }
-    Save.data = [...elements];
+    Save.data = special_array(elements);
     localStorage.setItem("infinite-craft-data", JSON.stringify({
         "elements": Save.data,
         "darkMode": data?.darkMode || false
@@ -150,6 +199,6 @@ setTimeout(() => {
     init();
 
     console.log("hello world");
-}, 5000)
+}, 2000)
 
 

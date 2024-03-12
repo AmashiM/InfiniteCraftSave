@@ -88,7 +88,13 @@ function writeFirefoxManifest() {
         "name": NAME,
         "version": "1.0",
         "icons": {
+            "256": ICON_FILE_NAME
         },
+        "permissions": [
+            "downloads",
+            "activeTab",
+            "downloads.open"
+        ],
         "content_scripts": [
             {
                 "matches": [
@@ -98,7 +104,13 @@ function writeFirefoxManifest() {
                     MAIN_SCRIPT
                 ]
             }
-        ]
+        ],
+        "browser_specific_settings": {
+            "gecko": {
+                "id": "AmashiMcLane@outlook.com",
+                "strict_min_version": "42.0"
+            }
+        }
     })
 }
 
